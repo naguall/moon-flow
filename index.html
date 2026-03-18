@@ -4316,6 +4316,56 @@ function switchToLunarMode() {
     renderCalendar();
 }
 
+function updateCurrentDayInfoForMode(mode) {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    let displayTitle = 'Luna Hoy';
+    let displayEmoji = '☽';
+    let displayDay = 0;
+    let displayInfo = '';
+
+    if (mode === 'solar') {
+        const sunLongitude = getPlanetPosition('sun', today);
+        const sunSignData = getZodiacSignWithDegree(sunLongitude);
+        displayTitle = currentLang === 'es' ? 'Sol Hoy' : 'Sun Today';
+        displayEmoji = '☉';
+        displayDay = Math.ceil((today - solarSigns2026[currentSignIndex].start) / (1000 * 60 * 60 * 24)) + 1;
+        displayInfo = sunSignData.formatted;
+    } else if (mode === 'gregorian') {
+        displayTitle = currentLang === 'es' ? 'Hoy (Gregoriano)' : 'Today (Gregorian)';
+        displayEmoji = '📅';
+        displayDay = today.getDate();
+        const monthNames = currentLang === 'es' ?
+            ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] :
+            ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        displayInfo = monthNames[today.getMonth()];
+    } else {
+        // Lunar mode
+        const elongation = calculateLunarPhase(today);
+        const moonLongitude = getMoonPosition(today);
+        const moonSignData = getZodiacSignWithDegree(moonLongitude);
+        displayTitle = currentLang === 'es' ? 'Luna Hoy' : 'Moon Today';
+        displayEmoji = getMoonEmoji(elongation);
+        displayDay = getLunarDayForDate(today) || 1;
+        displayInfo = moonSignData.formatted;
+    }
+
+    // Update the currentDayInfo element
+    const currentDayInfoDiv = document.getElementById('currentDayInfo');
+    if (currentDayInfoDiv) {
+        // Simple update for now - just update the title and emoji
+        const titleElem = currentDayInfoDiv.querySelector('[style*="Luna Hoy"]');
+        if (titleElem) {
+            titleElem.innerHTML = displayTitle;
+        }
+        const emojiSpan = currentDayInfoDiv.querySelector('svg') || currentDayInfoDiv.querySelector('[style*="font-size: 2em"]');
+        if (emojiSpan && mode !== 'lunar') {
+            emojiSpan.textContent = displayEmoji;
+        }
+    }
+}
+
 function updateModeButtons() {
     const lunarBtn = document.getElementById('lunarModeBtn');
     const solarBtn = document.getElementById('solarModeBtn');
@@ -4381,8 +4431,11 @@ function renderGregorianCalendar() {
         </div>
         <button class="nav-btn" onclick="nextGregorianMonth()">${nextText} →</button>
     `;
-    
+
     gregorianCal.innerHTML = generateGregorianMonth();
+
+    // Update currentDayInfo to show gregorian data instead of lunar
+    updateCurrentDayInfoForMode('gregorian');
 }
 
 function previousGregorianMonth() {
@@ -4518,6 +4571,9 @@ function renderSolarCalendar() {
     
     // Generate solar calendar
     solarWeeks.innerHTML = generateSolarWeeks(sign);
+
+    // Update currentDayInfo to show solar data instead of lunar
+    updateCurrentDayInfoForMode('solar');
 }
 
 function previousSign() {
